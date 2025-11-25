@@ -13,6 +13,7 @@
 #include <ws2tcpip.h>
 #pragma comment(lib, "ws2_32.lib")
 typedef int socklen_t;
+using ssize_t = SSIZE_T;
 #else
 #include <netinet/in.h>
 #include <unistd.h>

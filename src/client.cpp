@@ -16,10 +16,18 @@
 #include <iterator>
 #include <fstream>
 #include <map>
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+#define close closesocket
+#define read(s, b, l) recv(s, b, l, 0)
+#else
 #include <netinet/in.h>
 #include <unistd.h>
-#include <cstring>
 #include <arpa/inet.h>
+#endif
+#include <cstring>
 #include <mutex>
 
 using namespace ftxui;

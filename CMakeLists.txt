@@ -19,3 +19,7 @@ target_link_libraries(chat_client PRIVATE p2pchat ftxui::screen ftxui::dom ftxui
 add_executable(discovery_server src/discovery_server.cpp)
 find_package(Threads REQUIRED)
 target_link_libraries(discovery_server PRIVATE Threads::Threads)
+
+if(WIN32)
+    target_link_libraries(discovery_server PRIVATE ws2_32)
+endif()
