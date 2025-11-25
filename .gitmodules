@@ -1,0 +1,3 @@
+[submodule "lib-p2pchat"]
+	path = lib-p2pchat
+	url = https://github.com/cappuch/lib-p2pchat
