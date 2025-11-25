@@ -5,10 +5,20 @@
 #include <thread>
 #include <vector>
 #include <sstream>
-#include <netinet/in.h>
-#include <unistd.h>
 #include <cstring>
 #include <algorithm>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+typedef int socklen_t;
+#else
+#include <netinet/in.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#endif
 
 std::map<std::string, std::string> user_registry; // this might be the worst idea ever -- not storing it to disk)
 std::mutex registry_mutex;
@@ -66,10 +76,22 @@ void handle_client(int client_socket) {
 
         send(client_socket, response.c_str(), response.length(), 0);
     }
+#ifdef _WIN32
+    closesocket(client_socket);
+#else
     close(client_socket);
+#endif
 }
 
 int main(int argc, char** argv) {
+#ifdef _WIN32
+    WSADATA wsaData;
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        std::cerr << "WSAStartup failed\n";
+        return 1;
+    }
+#endif
+
     int port = 8000;
     if (argc > 1) {
         port = std::stoi(argv[1]);
@@ -82,7 +104,7 @@ int main(int argc, char** argv) {
     }
 
     int opt = 1;
-    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt));
+    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, (const char*)&opt, sizeof(opt));
 
     sockaddr_in address;
     address.sin_family = AF_INET;
@@ -110,5 +132,8 @@ int main(int argc, char** argv) {
         }
     }
 
+#ifdef _WIN32
+    WSACleanup();
+#endif
     return 0;
 }
