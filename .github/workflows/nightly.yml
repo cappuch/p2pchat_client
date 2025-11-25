@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: '0 3 * * *'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: ${{ matrix.os }}
@@ -45,3 +48,63 @@ jobs:
 
       - name: Build
         run: cmake --build build --config ${{ matrix.build_type }} --parallel
+
+      - name: Package artifacts (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p dist
+          cp build/chat_client dist/ 2>/dev/null || true
+          cp build/discovery_server dist/ 2>/dev/null || true
+          tar -czvf p2pchat-${{ runner.os }}.tar.gz -C dist .
+
+      - name: Package artifacts (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp build/Release/*.exe dist/ 2>/dev/null || cp build/*.exe dist/ 2>/dev/null || true
+          7z a p2pchat-Windows.zip ./dist/*
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2pchat-${{ runner.os }}
+          path: |
+            p2pchat-*.tar.gz
+            p2pchat-*.zip
+
+  release:
+    name: Create Nightly Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Get current date
+        id: date
+        run: echo "date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+
+      - name: Delete existing nightly release
+        uses: dev-drprasad/delete-tag-and-release@v1.1
+        with:
+          tag_name: nightly-${{ steps.date.outputs.date }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          delete_release: true
+        continue-on-error: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly-${{ steps.date.outputs.date }}
+          name: Nightly Build ${{ steps.date.outputs.date }}
+          body: |
+            Automated nightly build from ${{ github.sha }}
+            
+            Built on: ${{ steps.date.outputs.date }}
+          prerelease: true
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
